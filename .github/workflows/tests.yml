@@ -27,6 +27,6 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov  # Ensure pytest-cov is installed
 
-      - name: Run tests with pytest and enforce 70% coverage
+      - name: Run tests with pytest and enforce 90% coverage
         run: |
-          pytest --cov=app --cov-fail-under=70
+          pytest --cov=app --cov-fail-under=90
