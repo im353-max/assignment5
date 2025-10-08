@@ -130,3 +130,50 @@ def test_from_dict_result_mismatch(caplog):
 
     # Assert
     assert "Loaded calculation result 10 differs from computed result 5" in caplog.text
+
+def test_str_representation():
+    # Arrange
+    calc = Calculation(
+        operation="Addition",
+        operand1=Decimal("2"),
+        operand2=Decimal("3")
+    )
+
+    # Act
+    result_str = str(calc)
+
+    # Assert
+    assert result_str == "Addition(2, 3) = 5"
+
+def test_repr():
+    fixed_time = datetime(2025, 10, 7, 20, 0, 0)  # fixed timestamp
+
+    # Create a Calculation object
+    calc = Calculation(
+        operation="Addition",
+        operand1=Decimal("2"),
+        operand2=Decimal("3")
+    )
+
+    # Override the timestamp for testing
+    calc.timestamp = fixed_time
+
+    # Act
+    repr_str = repr(calc)
+
+    # Assert
+    expected = (
+        "Calculation(operation='Addition', "
+        "operand1=2, "
+        "operand2=3, "
+        "result=5, "
+        "timestamp='2025-10-07T20:00:00')"
+    )
+    assert repr_str == expected
+
+def test_eq_with_non_calculation():
+    calc = Calculation(operation="Addition", operand1=Decimal("2"), operand2=Decimal("3"))
+    other = "not a calculation"
+    
+    # __eq__ should return NotImplemented, which Python interprets as False in comparison
+    assert (calc == other) is False

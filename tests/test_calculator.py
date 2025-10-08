@@ -2,7 +2,11 @@ import datetime
 from pathlib import Path
 import pandas as pd
 import pytest
+import unittest
+from io import StringIO
 from unittest.mock import Mock, patch, PropertyMock
+from unittest.mock import patch, MagicMock
+from io import StringIO
 from decimal import Decimal
 from tempfile import TemporaryDirectory
 from app.calculator import Calculator
@@ -178,3 +182,173 @@ def test_calculator_repl_help(mock_print, mock_input):
 def test_calculator_repl_addition(mock_print, mock_input):
     calculator_repl()
     mock_print.assert_any_call("\nResult: 5")
+
+class TestCalculatorSaveHistoryException(unittest.TestCase):
+
+    @patch('builtins.input', side_effect=['exit'])
+    @patch('app.calculator.Calculator.save_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_save_history_exception(self, mock_stdout, mock_save_history, mock_input):
+        # Make save_history raise an exception
+        mock_save_history.side_effect = Exception("Disk full")
+
+        calculator_repl()
+    
+        output = mock_stdout.getvalue()
+        self.assertIn("Warning: Could not save history: Disk full", output)
+        self.assertIn("Goodbye!", output)
+
+    if __name__ == '__main__':
+        unittest.main()
+
+    @patch('builtins.input', side_effect=['history', 'exit'])
+    @patch('app.calculator.Calculator.show_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_empty_history(self, mock_stdout, mock_show_history, mock_input):
+        # Make show_history return an empty list
+        mock_show_history.return_value = []
+
+        # Run the REPL
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+
+        # Assert it prints "No calculations in history"
+        self.assertIn("No calculations in history", output)
+        # REPL still exits
+        self.assertIn("Goodbye!", output)
+
+    @patch('builtins.input', side_effect=['history', 'exit'])
+    @patch('app.calculator.Calculator.show_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_history_with_entries(self, mock_stdout, mock_show_history, mock_input):
+        # Return a sample history
+        mock_show_history.return_value = [
+            "2 + 3 = 5",
+            "10 / 2 = 5"
+        ]
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+
+        # Assert that the history is printed correctly
+        self.assertIn("Calculation History:", output)
+        self.assertIn("1. 2 + 3 = 5", output)
+        self.assertIn("2. 10 / 2 = 5", output)
+
+    @patch('builtins.input', side_effect=['undo', 'exit'])
+    @patch('app.calculator.Calculator.undo')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_undo_success(self, mock_stdout, mock_undo, mock_input):
+        # Simulate undo returning True
+        mock_undo.return_value = True
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("Operation undone", output)
+        self.assertIn("Goodbye!", output)
+    
+    @patch('builtins.input', side_effect=['clear', 'exit'])
+    @patch('app.calculator.Calculator.clear_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_clear_history(self, mock_stdout, mock_clear_history, mock_input):
+        # Run the REPL
+        calculator_repl()
+
+        # Check that clear_history was called once
+        mock_clear_history.assert_called_once()
+
+        # Capture output and verify printed message
+        output = mock_stdout.getvalue()
+        self.assertIn("History cleared", output)
+        self.assertIn("Goodbye!", output)
+
+    @patch('builtins.input', side_effect=['undo', 'exit'])
+    @patch('app.calculator.Calculator.undo')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_undo_nothing_to_undo(self, mock_stdout, mock_undo, mock_input):
+        mock_undo.return_value = False  # simulate nothing to undo
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("Nothing to undo", output)
+        self.assertIn("Goodbye!", output)
+    
+    @patch('builtins.input', side_effect=['redo', 'exit'])
+    @patch('app.calculator.Calculator.redo')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_redo_success(self, mock_stdout, mock_redo, mock_input):
+        mock_redo.return_value = True  # simulate redo succeeds
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("Operation redone", output)
+        self.assertIn("Goodbye!", output)
+    
+    @patch('builtins.input', side_effect=['redo', 'exit'])
+    @patch('app.calculator.Calculator.redo')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_redo_nothing_to_redo(self, mock_stdout, mock_redo, mock_input):
+        mock_redo.return_value = False  # simulate nothing to redo
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("Nothing to redo", output)
+        self.assertIn("Goodbye!", output)
+    
+    @patch('builtins.input', side_effect=['save', 'exit'])
+    @patch('app.calculator.Calculator.save_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_save_success(self, mock_stdout, mock_save_history, mock_input):
+        # Simulate successful save (no exception)
+        mock_save_history.return_value = None
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("History saved successfully", output)
+        self.assertIn("Goodbye!", output)
+
+    @patch('builtins.input', side_effect=['save', 'exit'])
+    @patch('app.calculator.Calculator.save_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_save_failure(self, mock_stdout, mock_save_history, mock_input):
+        # Make save_history raise an exception
+        mock_save_history.side_effect = Exception("Disk full")
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("Error saving history: Disk full", output)
+        self.assertIn("Goodbye!", output)
+
+    @patch('builtins.input', side_effect=['load', 'exit'])
+    @patch('app.calculator.Calculator.load_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_load_success(self, mock_stdout, mock_load_history, mock_input):
+        # Simulate successful load (no exception)
+        mock_load_history.return_value = None
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("History loaded successfully", output)
+        self.assertIn("Goodbye!", output)
+    
+    @patch('builtins.input', side_effect=['load', 'exit'])
+    @patch('app.calculator.Calculator.load_history')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_load_failure(self, mock_stdout, mock_load_history, mock_input):
+        # Make load_history raise an exception
+        mock_load_history.side_effect = Exception("File not found")
+
+        calculator_repl()
+
+        output = mock_stdout.getvalue()
+        self.assertIn("Error loading history: File not found", output)
+        self.assertIn("Goodbye!", output)
